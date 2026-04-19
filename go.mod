@@ -1,3 +1,3 @@
-module day1-go-http
+module Gotry_http
 
 go 1.24

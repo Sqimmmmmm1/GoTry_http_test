@@ -1,22 +1,13 @@
 package main
 
 import (
+	"Gotry_http/handler"
+	"Gotry_http/model"
+	"Gotry_http/response"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
-
-type Response struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data"`
-}
-
-type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-}
 
 func pingHandler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println("method:", r.Method)
@@ -41,11 +32,11 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 		// w.WriteHeader(http.StatusMethodNotAllowed)
 		// fmt.Fprintln(w, "method not allowed")
 
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	writeJson(w, http.StatusOK, Response{
+	response.WriteJSON(w, http.StatusOK, response.Response{
 		Code: 0,
 		Msg:  "ok",
 		Data: map[string]string{
@@ -87,7 +78,7 @@ func userHandler_1(w http.ResponseWriter, r *http.Request) {
 	// 2. 参数校验
 	if id == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		resp := Response{
+		resp := response.Response{
 			Code: 400,
 			Msg:  "id is required",
 			Data: nil,
@@ -97,16 +88,16 @@ func userHandler_1(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. 模拟查询用户
-	var user User
+	var user model.User
 	switch id {
 	case "1":
-		user = User{
+		user = model.User{
 			ID:   "1",
 			Name: "Tom",
 			Age:  23,
 		}
 	case "2":
-		user = User{
+		user = model.User{
 			ID:   "2",
 			Name: "Jack",
 			Age:  25,
@@ -114,7 +105,7 @@ func userHandler_1(w http.ResponseWriter, r *http.Request) {
 	default:
 		{
 			w.WriteHeader(http.StatusBadRequest)
-			resp := Response{
+			resp := response.Response{
 				Code: 404,
 				Msg:  "user not found",
 				Data: nil,
@@ -125,7 +116,7 @@ func userHandler_1(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4. 返回成功响应
-	resp := Response{
+	resp := response.Response{
 		Code: 0,
 		Msg:  "ok",
 		Data: user,
@@ -144,32 +135,32 @@ func userHandler_2(w http.ResponseWriter, r *http.Request) {
 
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "id is required")
+		response.WriteError(w, http.StatusBadRequest, "id is required")
 		return
 	}
 
-	var user_1 User
+	var user_1 model.User
 	switch id {
 	case "1":
-		user_1 = User{
+		user_1 = model.User{
 			ID:   "1",
 			Name: "Tom",
 			Age:  23,
 		}
 	case "2":
-		user_1 = User{
+		user_1 = model.User{
 			ID:   "2",
 			Name: "Jack",
 			Age:  25,
 		}
 	default:
 		{
-			writeError(w, http.StatusNotFound, "user not found")
+			response.WriteError(w, http.StatusNotFound, "user not found")
 			return
 		}
 	}
 
-	writeJson(w, http.StatusOK, Response{
+	response.WriteJSON(w, http.StatusOK, response.Response{
 		Code: 0,
 		Msg:  "ok",
 		Data: map[string]interface{}{
@@ -189,13 +180,13 @@ func usersHandler_1(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	users := []User{
+	users := []model.User{
 		{ID: "1", Name: "Amy", Age: 23},
 		{ID: "2", Name: "Bob", Age: 25},
 		{ID: "3", Name: "Charlie", Age: 26},
 	}
 
-	resp := Response{
+	resp := response.Response{
 		Code: 0,
 		Msg:  "ok",
 		Data: users,
@@ -209,17 +200,17 @@ func usersHandler_2(w http.ResponseWriter, r *http.Request) {
 	defer fmt.Println("userHandler end")
 
 	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	users2 := []User{
+	users2 := []model.User{
 		{ID: "1", Name: "Amy", Age: 23},
 		{ID: "2", Name: "Bob", Age: 25},
 		{ID: "3", Name: "Charlie", Age: 26},
 	}
 
-	writeJson(w, http.StatusOK, Response{
+	response.WriteJSON(w, http.StatusOK, response.Response{
 		Code: 0,
 		Msg:  "ok",
 		Data: users2,
@@ -228,11 +219,11 @@ func usersHandler_2(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/ping", pingHandler)
-	http.HandleFunc("/hello", helloHandler)
-	http.HandleFunc("/user", userHandler_2)
+	http.HandleFunc("/ping", handler.PingHandler)
+	http.HandleFunc("/hello", handler.HelloHandler)
+	http.HandleFunc("/user", handler.UserHandler)
 
-	http.HandleFunc("/users", usersHandler_2)
+	http.HandleFunc("/users", handler.UsersHandler)
 
 	fmt.Println("server is running at :8080")
 	err := http.ListenAndServe(":8080", nil)
@@ -243,7 +234,7 @@ func main() {
 
 func day_3_main() {
 
-	user := User{
+	user := model.User{
 		ID:   "5",
 		Name: "Jom",
 		Age:  17,
@@ -251,7 +242,7 @@ func day_3_main() {
 
 	user.Print()
 
-	user2 := User{
+	user2 := model.User{
 		ID:   "6",
 		Name: "Jack",
 		Age:  18,
@@ -314,7 +305,7 @@ func test() {
 
 	http.HandleFunc("/user", userHandler_1)
 
-	u := User{
+	u := model.User{
 		ID:   "1",
 		Name: "Qum",
 		Age:  21,
@@ -338,7 +329,7 @@ func test() {
 	names = append(names, "Abc")
 	fmt.Println(names)
 
-	users := []User{
+	users := []model.User{
 		{ID: "1", Name: "Tom", Age: 23},
 		{ID: "2", Name: "Jerry", Age: 25},
 	}
@@ -348,7 +339,7 @@ func test() {
 		fmt.Println(user.ID, user.Name, user.Age)
 	}
 
-	newUser := User{
+	newUser := model.User{
 		ID:   "3",
 		Name: "Alice",
 		Age:  22,
