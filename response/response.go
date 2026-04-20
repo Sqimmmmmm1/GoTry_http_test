@@ -21,7 +21,6 @@ func WriteJSON(w http.ResponseWriter, statusCode int, resp Response) {
 	if err != nil {
 		fmt.Println(err)
 	}
-
 }
 
 func WriteError(w http.ResponseWriter, statusCode int, msg string) {
