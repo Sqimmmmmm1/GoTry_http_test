@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 func pingHandler(w http.ResponseWriter, r *http.Request) {
@@ -361,4 +362,46 @@ func test() {
 	if err != nil {
 		fmt.Println("start server failed:", err)
 	}
+}
+
+func goroutine_main() {
+	go sayHello()
+	time.Sleep(1 * time.Second)
+
+	for i := 0; i < 5; i++ {
+		go printNum(i)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	ch := make(chan string)
+
+	go func() {
+		ch <- "hello"
+	}()
+
+	msg := <-ch
+	fmt.Println(msg)
+
+	ch2 := make(chan int)
+
+	go func() {
+		ch2 <- 100
+	}()
+
+	num := <-ch2
+	fmt.Println(num)
+
+	fmt.Println("main end")
+
+	ch3 := make(chan int)
+	go producer(ch3)
+	for num := range ch3 {
+		fmt.Println(num)
+	}
+
+	ch4 := make(chan string)
+	ch4 <- "hello"
+	fmt.Println("end")
+
 }
