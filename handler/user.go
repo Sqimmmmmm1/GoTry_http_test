@@ -7,9 +7,24 @@ import (
 	"net/http"
 )
 
-func UserHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("UserHandler start")
-	defer fmt.Println("UserHandler end")
+type UserService interface {
+	GetUserByID(id string) (model.User, error)
+	ListUsers() []model.User
+}
+
+type UserHandler struct {
+	userService UserService
+}
+
+func NewUserHandler(userService UserService) *UserHandler {
+	return &UserHandler{
+		userService: userService,
+	}
+}
+
+func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetUser start")
+	defer fmt.Println("GetUser end")
 
 	if r.Method != http.MethodGet {
 		response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -22,22 +37,9 @@ func UserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user model.User
-	switch id {
-	case "1":
-		user = model.User{
-			ID:   "1",
-			Name: "Tom",
-			Age:  23,
-		}
-	case "2":
-		user = model.User{
-			ID:   "2",
-			Name: "Jack",
-			Age:  25,
-		}
-	default:
-		response.WriteError(w, http.StatusNotFound, "user not found")
+	user, err := h.userService.GetUserByID(id)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -49,28 +51,22 @@ func UserHandler(w http.ResponseWriter, r *http.Request) {
 			"introduce": user.Introduce(),
 		},
 	})
-
 }
 
-func UsersHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("UsersHandler start")
-	defer fmt.Println("UsersHandler end")
+func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("ListUsers start")
+	defer fmt.Println("ListUsers end")
 
 	if r.Method != http.MethodGet {
 		response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	users := []model.User{
-		{ID: "1", Name: "Amy", Age: 23},
-		{ID: "2", Name: "Bob", Age: 25},
-		{ID: "3", Name: "Carlie", Age: 26},
-	}
+	users := h.userService.ListUsers()
 
 	response.WriteJSON(w, http.StatusOK, response.Response{
 		Code: 0,
 		Msg:  "ok",
 		Data: users,
 	})
-
 }
