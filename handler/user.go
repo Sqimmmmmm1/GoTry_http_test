@@ -3,6 +3,7 @@ package handler
 import (
 	"Gotry_http/model"
 	"Gotry_http/response"
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -10,6 +11,7 @@ import (
 type UserService interface {
 	GetUserByID(id string) (model.User, error)
 	ListUsers() []model.User
+	CreateUser(user model.User) error
 }
 
 type UserHandler struct {
@@ -68,5 +70,44 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		Code: 0,
 		Msg:  "ok",
 		Data: users,
+	})
+}
+
+func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req model.User
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.ID == "" {
+		response.WriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	if req.Name == "" {
+		response.WriteError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	if req.Age < 0 {
+		response.WriteError(w, http.StatusBadRequest, "age must be a positive integer")
+		return
+	}
+
+	if err := h.userService.CreateUser(req); err != nil {
+		response.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, response.Response{
+		Code: 0,
+		Msg:  "create user success",
+		Data: req,
 	})
 }

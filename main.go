@@ -18,6 +18,7 @@ func main() {
 	http.HandleFunc("/hello", handler.HelloHandler)
 	http.HandleFunc("/user", userHandler.GetUser)
 	http.HandleFunc("/users", userHandler.ListUsers)
+	http.HandleFunc("/user/create", userHandler.CreateUser)
 
 	fmt.Println("server is running at :8080")
 	err := http.ListenAndServe(":8080", nil)
