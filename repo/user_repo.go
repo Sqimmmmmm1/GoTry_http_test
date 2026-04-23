@@ -2,45 +2,70 @@ package repo
 
 import (
 	"Gotry_http/model"
+	"database/sql"
 	"errors"
 )
 
+// 定义一个用户仓库对象，它内部持有数据库连接
 type UserRepo struct {
-	users []model.User
+	db *sql.DB
 }
 
-func NewUserRepo() *UserRepo {
-	return &UserRepo{
-		users: []model.User{
-			{ID: "1", Name: "Tom", Age: 23},
-			{ID: "2", Name: "Jack", Age: 25},
-			{ID: "3", Name: "Amy", Age: 22},
-		},
-	}
+// 创建一个UserRepo对象 依赖注入，repo本身不会自己创建db链接
+func NewUserRepo(db *sql.DB) *UserRepo {
+	return &UserRepo{db: db}
 }
 
-func (r *UserRepo) GetUserByID(id string) (model.User, error) {
-	for _, user := range r.users {
-		if user.ID == id {
-			return user, nil
+func (r *UserRepo) GetUserByID(id int64) (model.User, error) {
+	query := "SELECT id, username, password, age, created_at FROM users WHERE id = ?"
+
+	var user model.User
+	err := r.db.QueryRow(query, id).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Password,
+		&user.Age,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return model.User{}, errors.New("user not found")
 		}
+		return model.User{}, err
 	}
-	return model.User{}, errors.New("user not found")
+
+	return user, nil
 }
 
 func (r *UserRepo) ListUsers() []model.User {
-	return r.users
+	query := "SELECT id, username, password, age, created_at FROM users ORDER BY id ASC"
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return []model.User{}
+	}
+	defer rows.Close()
+
+	var users []model.User
+	for rows.Next() {
+		var user model.User
+		if err := rows.Scan(
+			&user.ID,
+			&user.Name,
+			&user.Password,
+			&user.Age,
+			&user.CreatedAt,
+		); err == nil {
+			users = append(users, user)
+		}
+	}
+	return users
 }
 
 func (r *UserRepo) CreateUser(user model.User) error {
-	for _, u := range r.users {
-		if u.ID == user.ID {
-			return errors.New("user id already exists")
-		}
-	}
-
-	r.users = append(r.users, user)
-	return nil
+	query := "INSERT INTO users (username, password, age) VALUES (?, ?, ?)"
+	_, err := r.db.Exec(query, user.Name, user.Password, user.Age)
+	return err
 }
 
 // func (r *UserRepo) GetUserByName(name string) (model.User, error)

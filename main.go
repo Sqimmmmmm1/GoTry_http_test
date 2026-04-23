@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Gotry_http/db"
 	"Gotry_http/handler"
 	"Gotry_http/repo"
 	"Gotry_http/service"
@@ -10,7 +11,12 @@ import (
 
 func main() {
 
-	userRepo := repo.NewUserRepo()
+	mysqlDB, err := db.NewMySQLDB()
+	if err != nil {
+		panic(err)
+	}
+
+	userRepo := repo.NewUserRepo(mysqlDB)
 	userService := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userService)
 
@@ -21,8 +27,7 @@ func main() {
 	http.HandleFunc("/user/create", userHandler.CreateUser)
 
 	fmt.Println("server is running at :8080")
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
+	if err := http.ListenAndServe(":8080", nil); err != nil {
 		fmt.Println("start server failed:", err)
 	}
 }

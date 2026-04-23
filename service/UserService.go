@@ -6,7 +6,7 @@ import (
 )
 
 type UserRepo interface {
-	GetUserByID(id string) (model.User, error)
+	GetUserByID(id int64) (model.User, error)
 	ListUsers() []model.User
 	CreateUser(user model.User) error
 }
@@ -21,8 +21,11 @@ func NewUserService(userRepo UserRepo) *UserService {
 	}
 }
 
-func (s *UserService) GetUserByID(id string) (model.User, error) {
+func (s *UserService) GetUserByID(id int64) (model.User, error) {
 	// TODO: 根据id获取用户信息 先用内存数据返回
+	if id <= 0 {
+		return model.User{}, errors.New("invalid id")
+	}
 	return s.userRepo.GetUserByID(id)
 }
 
@@ -32,11 +35,11 @@ func (s *UserService) ListUsers() []model.User {
 }
 
 func (s *UserService) CreateUser(user model.User) error {
-	if user.ID == "" {
-		return errors.New("id is required")
-	}
 	if user.Name == "" {
 		return errors.New("name is required")
+	}
+	if user.Password == "" {
+		return errors.New("password is required")
 	}
 	if user.Age <= 0 {
 		return errors.New("age must be greater than 0")

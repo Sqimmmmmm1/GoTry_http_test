@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 type UserService interface {
-	GetUserByID(id string) (model.User, error)
+	GetUserByID(id int64) (model.User, error)
 	ListUsers() []model.User
 	CreateUser(user model.User) error
 }
@@ -33,14 +34,24 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.URL.Query().Get("id")
-	if id == "" {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
 		response.WriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "id must be a valid integer")
 		return
 	}
 
 	user, err := h.userService.GetUserByID(id)
 	if err != nil {
+		if err.Error() == "user not found" {
+			response.WriteError(w, http.StatusNotFound, err.Error())
+			return
+		}
 		response.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -49,8 +60,8 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		Code: 0,
 		Msg:  "ok",
 		Data: map[string]interface{}{
-			"user":      user,
-			"introduce": user.Introduce(),
+			"user": user,
+			//"introduce": user.Introduce(),
 		},
 	})
 }
@@ -85,18 +96,18 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ID == "" {
-		response.WriteError(w, http.StatusBadRequest, "id is required")
-		return
-	}
-
 	if req.Name == "" {
 		response.WriteError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	if req.Age < 0 {
-		response.WriteError(w, http.StatusBadRequest, "age must be a positive integer")
+	if req.Password == "" {
+		response.WriteError(w, http.StatusBadRequest, "password is required")
+		return
+	}
+
+	if req.Age <= 0 {
+		response.WriteError(w, http.StatusBadRequest, "age must be greater than 0")
 		return
 	}
 
@@ -108,6 +119,9 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, response.Response{
 		Code: 0,
 		Msg:  "create user success",
-		Data: req,
+		Data: map[string]interface{}{
+			"username": req.Name,
+			"age":      req.Age,
+		},
 	})
 }
