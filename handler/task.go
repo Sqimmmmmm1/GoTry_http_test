@@ -11,6 +11,8 @@ import (
 type TaskService interface {
 	CreateTask(task model.Task) error
 	ListTasksByUserID(userID int64) []model.Task
+	DeleteTaskByID(id int64) error
+	GetTaskDetail(id int64) (*model.TaskDetail, error)
 }
 
 type TaskHandler struct {
@@ -30,6 +32,8 @@ func (h *TaskHandler) Tasks(w http.ResponseWriter, r *http.Request) {
 		h.CreateTask(w, r)
 	case http.MethodGet:
 		h.ListTasks(w, r)
+	case http.MethodDelete:
+		h.DeleteTask(w, r)
 	default:
 		response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
@@ -95,5 +99,72 @@ func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 		Code: 0,
 		Msg:  "ok",
 		Data: tasks,
+	})
+}
+
+// DELETE /task { id }
+func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		response.WriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "id must be a valid integer")
+		return
+	}
+
+	if id <= 0 {
+		response.WriteError(w, http.StatusBadRequest, "id must be greater than 0")
+		return
+	}
+
+	if err := h.taskService.DeleteTaskByID(id); err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "failed to delete task: "+err.Error())
+	}
+
+	response.WriteJSON(w, http.StatusOK, response.Response{
+		Code: 0,
+		Msg:  "delete task success",
+		Data: map[string]interface{}{
+			"deleted_id": id,
+		},
+	})
+}
+
+func (h *TaskHandler) TaskDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		response.WriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "id must be a valid integer")
+		return
+	}
+
+	taskDetail, err := h.taskService.GetTaskDetail(id)
+	if err != nil {
+		if err.Error() == "task not found" {
+			response.WriteError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		response.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, response.Response{
+		Code: 0,
+		Msg:  "ok",
+		Data: taskDetail,
 	})
 }

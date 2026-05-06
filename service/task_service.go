@@ -9,6 +9,8 @@ import (
 type TaskRepo interface {
 	CreateTask(task model.Task) error
 	ListTasksByUserID(userID int64) []model.Task
+	DeleteTaskByID(id int64) error
+	GetTaskByIDWithUser(id int64) (*model.TaskDetail, error)
 }
 
 // 定义TaskService结构体，包含TaskRepo接口，把接口作为成员变量，用于依赖注入
@@ -45,4 +47,18 @@ func (s *TaskService) ListTasksByUserID(userID int64) []model.Task {
 		return []model.Task{}
 	}
 	return s.taskRepo.ListTasksByUserID(userID)
+}
+
+func (s *TaskService) DeleteTaskByID(id int64) error {
+	if id <= 0 {
+		return errors.New("task id must be greater than 0")
+	}
+	return s.taskRepo.DeleteTaskByID(id)
+}
+
+func (s *TaskService) GetTaskDetail(id int64) (*model.TaskDetail, error) {
+	if id <= 0 {
+		return nil, errors.New("invalid task id")
+	}
+	return s.taskRepo.GetTaskByIDWithUser(id) // Changed from s.taskRepo.GetTaskByIDWithUser(id) to s.taskRepo.GetTaskByIDWithUser(id)
 }

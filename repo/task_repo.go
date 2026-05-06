@@ -3,6 +3,7 @@ package repo
 import (
 	"Gotry_http/model"
 	"database/sql"
+	"errors"
 )
 
 // 让 TaskRepo 持有数据库连接 （即TaskRepo 就是 专门操作tasks表的数据库助手）
@@ -47,4 +48,41 @@ func (r *TaskRepo) ListTasksByUserID(userID int64) []model.Task {
 	}
 
 	return tasks
+}
+
+func (r *TaskRepo) DeleteTaskByID(id int64) error {
+	query := "DELETE FROM tasks WHERE id = ?"
+	_, err := r.db.Exec(query, id)
+	return err
+}
+
+// GetTaskByIDWithUser 通过任务ID获取任务，同时LEFT JOIN 查询任务及所属用户
+func (r *TaskRepo) GetTaskByIDWithUser(id int64) (*model.TaskDetail, error) {
+	query := "SELECT t.id, t.user_id, t.title, t.status, t.created_at, t.updated_at, u.id, u.username, u.age, u.created_at FROM tasks t LEFT JOIN users u ON t.user_id = u.id WHERE t.id = ?"
+
+	var task model.TaskDetail
+	var user model.User
+
+	err := r.db.QueryRow(query, id).Scan(
+		&task.ID,
+		&task.UserID,
+		&task.Title,
+		&task.Status,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+		&user.ID,
+		&user.Name,
+		&user.Age,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("task not found")
+		}
+		return nil, err
+	}
+	if user.ID > 0 {
+		task.User = &user
+	}
+	return &task, nil
 }
