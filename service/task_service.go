@@ -11,6 +11,8 @@ type TaskRepo interface {
 	ListTasksByUserID(userID int64) []model.Task
 	DeleteTaskByID(id int64) error
 	GetTaskByIDWithUser(id int64) (*model.TaskDetail, error)
+	ListTasksWithFilter(userID int64, status string, offset, limit int) ([]model.Task, error)
+	CountTasks(userID int64, status string) (int, error)
 }
 
 // 定义TaskService结构体，包含TaskRepo接口，把接口作为成员变量，用于依赖注入
@@ -61,4 +63,26 @@ func (s *TaskService) GetTaskDetail(id int64) (*model.TaskDetail, error) {
 		return nil, errors.New("invalid task id")
 	}
 	return s.taskRepo.GetTaskByIDWithUser(id) // Changed from s.taskRepo.GetTaskByIDWithUser(id) to s.taskRepo.GetTaskByIDWithUser(id)
+}
+
+// ListTasksPaginated 返回分页任务列表和总数
+func (s *TaskService) ListTasksPaginated(userID int64, p model.Pagination) ([]model.Task, int, error) {
+	if p.Page <= 0 {
+		p.Page = 1
+	}
+	if p.PageSize <= 0 || p.PageSize > 100 {
+		p.PageSize = 10
+	}
+	offset := (p.Page - 1) * p.PageSize
+
+	tasks, err := s.taskRepo.ListTasksWithFilter(userID, p.Status, offset, p.PageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := s.taskRepo.CountTasks(userID, p.Status)
+	if err != nil {
+		return nil, 0, err
+	}
+	return tasks, total, nil
 }

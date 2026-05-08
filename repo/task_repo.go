@@ -86,3 +86,65 @@ func (r *TaskRepo) GetTaskByIDWithUser(id int64) (*model.TaskDetail, error) {
 	}
 	return &task, nil
 }
+
+// ListTaskWithFiilter 支持user_id、状态过滤、分页
+func (r *TaskRepo) ListTasksWithFilter(userID int64, status string, offset, limit int) ([]model.Task, error) {
+	query := "SELECT id, user_id, title, status, created_at, updated_at FROM tasks WHERE 1=1"
+	args := []interface{}{}
+
+	if userID > 0 {
+		query += " AND user_id = ?"
+		args = append(args, userID)
+	}
+
+	if status != "" {
+		query += " AND status = ?"
+		args = append(args, status)
+	}
+
+	query += " ORDER BY id ASC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []model.Task
+	for rows.Next() {
+		var t model.Task
+		if err := rows.Scan(
+			&t.ID,
+			&t.UserID,
+			&t.Title,
+			&t.Status,
+			&t.CreatedAt,
+			&t.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, nil
+}
+
+// CountTasks 统计符合条件的任务总数
+func (r *TaskRepo) CountTasks(userID int64, status string) (int, error) {
+	query := "SELECT COUNT(*) FROM tasks WHERE 1=1"
+	args := []interface{}{}
+
+	if userID > 0 {
+		query += " AND user_id = ?"
+		args = append(args, userID)
+	}
+
+	if status != "" {
+		query += " AND status = ?"
+		args = append(args, status)
+	}
+
+	var count int
+	err := r.db.QueryRow(query, args...).Scan(&count)
+	return count, err
+}

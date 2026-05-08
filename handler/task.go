@@ -13,6 +13,7 @@ type TaskService interface {
 	ListTasksByUserID(userID int64) []model.Task
 	DeleteTaskByID(id int64) error
 	GetTaskDetail(id int64) (*model.TaskDetail, error)
+	ListTasksPaginated(userID int64, p model.Pagination) ([]model.Task, int, error)
 }
 
 type TaskHandler struct {
@@ -79,26 +80,74 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /tasks?user_id=1
+// GET /tasks?user_id=1&status=&pageSize=&page=
+// 改造支持分页和状态过滤
 func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("user_id")
-	if userIDStr == "" {
-		response.WriteError(w, http.StatusBadRequest, "user_id is required")
+	pageStr := r.URL.Query().Get("page")
+	pageSizeStr := r.URL.Query().Get("page_size")
+	status := r.URL.Query().Get("status")
+
+	// 解析 user_id
+	var userID int64
+	if userIDStr != "" {
+		var err error
+		userID, err = strconv.ParseInt(userIDStr, 10, 64)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid user_id")
+			return
+		}
+	}
+
+	// 如果没有任何分页参数，保持原来的行为（向后兼容）
+	if pageStr == "" && pageSizeStr == "" && status == "" {
+		tasks := h.taskService.ListTasksByUserID(userID)
+		response.WriteJSON(w, http.StatusOK, response.Response{
+			Code: 0,
+			Msg:  "ok",
+			Data: tasks,
+		})
 		return
 	}
 
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	// 带分页或状态过滤时走新逻辑
+	p := model.Pagination{
+		Page:     1,
+		PageSize: 10,
+		Status:   status,
+	}
+	if pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err != nil || page < 1 {
+			response.WriteError(w, http.StatusBadRequest, "invalid page")
+			return
+		} else {
+			p.Page = page
+		}
+	}
+	if pageSizeStr != "" {
+		if ps, err := strconv.Atoi(pageSizeStr); err != nil || ps < 1 {
+			response.WriteError(w, http.StatusBadRequest, "invalid page_size")
+			return
+		} else {
+			p.PageSize = ps
+		}
+	}
+
+	tasks, total, err := h.taskService.ListTasksPaginated(userID, p)
 	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, "user_id must be a valid integer")
+		response.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	tasks := h.taskService.ListTasksByUserID(userID)
 
 	response.WriteJSON(w, http.StatusOK, response.Response{
 		Code: 0,
 		Msg:  "ok",
-		Data: tasks,
+		Data: model.PaginatedResult{
+			List:     tasks,
+			Total:    total,
+			Page:     p.Page,
+			PageSize: p.PageSize,
+		},
 	})
 }
 
