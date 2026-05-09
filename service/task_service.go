@@ -3,6 +3,7 @@ package service
 import (
 	"Gotry_http/model"
 	"errors"
+	"fmt"
 )
 
 // 定义接口TaskRepo，包含创建任务和按用户ID列表任务的方法
@@ -13,6 +14,7 @@ type TaskRepo interface {
 	GetTaskByIDWithUser(id int64) (*model.TaskDetail, error)
 	ListTasksWithFilter(userID int64, status string, offset, limit int) ([]model.Task, error)
 	CountTasks(userID int64, status string) (int, error)
+	UpdateTaskStatus(id int64, status string) error
 }
 
 // 定义TaskService结构体，包含TaskRepo接口，把接口作为成员变量，用于依赖注入
@@ -85,4 +87,35 @@ func (s *TaskService) ListTasksPaginated(userID int64, p model.Pagination) ([]mo
 		return nil, 0, err
 	}
 	return tasks, total, nil
+}
+
+// UpdateTaskStatus 更新任务状态
+// 允许的状态集合
+var validStatuses = map[string]bool{
+	"todo":  true,
+	"doing": true,
+	"done":  true,
+}
+
+func (s *TaskService) UpdateTaskStatus(id int64, status string) error {
+	if id <= 0 {
+		return errors.New("invalid task id")
+	}
+	if !validStatuses[status] {
+		return errors.New("invalid status")
+	}
+
+	return s.taskRepo.UpdateTaskStatus(id, status)
+}
+
+// CompleteTaskAsync 异步将任务标记为完成，并通过channel返回结果
+func (s *TaskService) CompleteTaskAsync(id int64, resultCh chan<- string) {
+	go func() {
+		err := s.UpdateTaskStatus(id, "done")
+		if err != nil {
+			resultCh <- fmt.Sprintf("Failed to update task%d status: %v", id, err)
+		} else {
+			resultCh <- fmt.Sprintf("Task%d status updated successfully", id)
+		}
+	}()
 }

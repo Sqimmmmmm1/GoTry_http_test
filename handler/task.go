@@ -14,6 +14,10 @@ type TaskService interface {
 	DeleteTaskByID(id int64) error
 	GetTaskDetail(id int64) (*model.TaskDetail, error)
 	ListTasksPaginated(userID int64, p model.Pagination) ([]model.Task, int, error)
+	UpdateTaskStatus(id int64, status string) error
+
+	// Async test handler
+	CompleteTaskAsync(id int64, resultCh chan<- string)
 }
 
 type TaskHandler struct {
@@ -215,5 +219,73 @@ func (h *TaskHandler) TaskDetail(w http.ResponseWriter, r *http.Request) {
 		Code: 0,
 		Msg:  "ok",
 		Data: taskDetail,
+	})
+}
+
+// UpdateTaskStatus 处理 Patch /task 请求，更新任务状态
+func (h *TaskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	status := r.URL.Query().Get("status")
+
+	if idStr == "" || status == "" {
+		response.WriteError(w, http.StatusBadRequest, "id and status are required")
+		return
+	}
+
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "id must be a valid integer")
+		return
+	}
+
+	err = h.taskService.UpdateTaskStatus(id, status)
+	if err != nil {
+		if err.Error() == "task not found" {
+			response.WriteError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		response.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, response.Response{
+		Code: 0,
+		Msg:  "update task status success",
+		Data: map[string]interface{}{
+			"task_id": id,
+			"status":  status,
+		},
+	})
+
+}
+
+// AsyncTestHandler 仅供开发调试，演示 goroutine + channel 通信
+func (h *TaskHandler) AsyncTestHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		response.WriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "id must be a valid integer")
+		return
+	}
+
+	resultCh := make(chan string)
+	h.taskService.CompleteTaskAsync(id, resultCh)
+	result := <-resultCh
+
+	response.WriteJSON(w, http.StatusOK, response.Response{
+		Code: 0,
+		Msg:  "ok",
+		Data: map[string]interface{}{
+			"result": result,
+		},
 	})
 }

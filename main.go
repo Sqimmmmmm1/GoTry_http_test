@@ -35,6 +35,9 @@ func main() {
 
 	http.HandleFunc("/tasks", taskHandler.Tasks)
 	http.HandleFunc("/task", taskHandler.TaskDetail)
+	http.HandleFunc("/task/status", taskHandler.UpdateTaskStatus)
+
+	http.HandleFunc("/debug/async-test", taskHandler.AsyncTestHandler)
 
 	fmt.Println("server is running at :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

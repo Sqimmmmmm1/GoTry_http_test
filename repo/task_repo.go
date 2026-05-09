@@ -148,3 +148,18 @@ func (r *TaskRepo) CountTasks(userID int64, status string) (int, error) {
 	err := r.db.QueryRow(query, args...).Scan(&count)
 	return count, err
 }
+
+// UpdateTaskStatus 更新任务状态
+func (r *TaskRepo) UpdateTaskStatus(id int64, status string) error {
+	query := "UPDATE tasks SET status = ? WHERE id = ?"
+	res, err := r.db.Exec(query, status, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return errors.New("task not found")
+	}
+	return nil
+}
